@@ -1,0 +1,128 @@
+# Example configuration for sensor_aggregation component
+esphome:
+  name: sensor-aggregation-example
+  platform: ESP32
+  board: esp32dev
+
+# Enable Home Assistant API
+api:
+
+# Enable logging
+logger:
+
+# Example input sensors (these would be your actual sensors)
+binary_sensor:
+  - platform: gpio
+    pin: GPIO5
+    name: "PIR Sensor 1"
+    device_class: motion
+    id: pir_sensor_1
+    
+  - platform: gpio
+    pin: GPIO6
+    name: "PIR Sensor 2"
+    device_class: motion
+    id: pir_sensor_2
+    
+  - platform: template
+    name: "mmWave Presence"
+    device_class: occupancy
+    id: mmwave_presence
+    
+  - platform: template
+    name: "mmWave Movement Towards"
+    device_class: motion
+    id: mmwave_towards
+    
+  - platform: template
+    name: "mmWave Movement Away"
+    device_class: motion
+    id: mmwave_away
+
+# Sensor Aggregation Component
+sensor_aggregation:
+  id: my_aggregator
+  detect_delay: 2s
+  release_delay: 30s
+  # Example of state change trigger
+  on_state_change:
+    - then:
+        - logger.log:
+            format: "Sensor %s changed state to %s"
+            args: ["tag", "state ? 'ON' : 'OFF'"]
+        - if:
+            condition:
+              lambda: 'return tag == "pir_1" && state;'
+            then:
+              - logger.log: "PIR Sensor 1 detected movement!"
+  inputs:
+    - id: pir_sensor_1
+      sensor_type: movement
+      detect_delay: 1s  # Override global delay for this sensor
+      tag: "pir_1"  # Custom tag for identifying this sensor in callbacks
+      
+    - id: pir_sensor_2
+      sensor_type: movement
+      
+    - id: mmwave_presence
+      sensor_type: presence
+ 
+    - id: mmwave_towards
+      sensor_type: movement_towards
+ 
+    - id: mmwave_away
+      sensor_type: movement_away
+
+  calibrations:
+      calibration_delay: 5min  # Calibrate after 5 minutes of no detections
+      exclude_from_clear:
+        - mmwave_presence
+      on_calibrate:
+        then:
+          - lambda: |
+              id(mmwave_presence).calibrate();
+          - logger.log:
+              level: DEBUG
+              tag: "sensor_aggregation"
+              format: "Calibrated mmWave presence sensor"
+
+    - binary_sensor_id: mmwave_towards
+      calibration_delay: 5min
+      on_calibrate:
+        then:
+          - lambda: |
+              id(mmwave_towards).calibrate();
+          - logger.log:
+              level: DEBUG
+              tag: "sensor_aggregation"
+              format: "Calibrated mmWave towards sensor"
+
+    - binary_sensor_id: mmwave_away
+      calibration_delay: 5min
+      on_calibrate:
+        then:
+          - lambda: |
+              id(mmwave_away).calibrate();
+          - logger.log:
+              level: DEBUG
+              tag: "sensor_aggregation"
+              format: "Calibrated mmWave away sensor"
+
+# Output sensors
+binary_sensor:
+  - platform: sensor_aggregation
+    presence:
+      name: "Room Occupied"
+      device_class: occupancy
+      
+    movement:
+      name: "Room Movement"
+      device_class: motion
+      
+    movement_towards:
+      name: "Movement Towards"
+      device_class: motion
+      
+    movement_away:
+      name: "Movement Away"
+      device_class: motion

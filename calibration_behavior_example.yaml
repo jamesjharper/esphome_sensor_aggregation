@@ -1,0 +1,34 @@
+# Example configuration showing the new calibration_behavior parameter
+
+sensor_aggregation:
+  - id: my_sensor_aggregation
+    inputs:
+      - binary_sensor_id: pir_sensor_1
+        sensor_type: presence
+        detect_delay: 1s
+        release_delay: 30s
+        tag: "living_room"
+      - binary_sensor_id: pir_sensor_2
+        sensor_type: presence
+        detect_delay: 1s
+        release_delay: 30s
+        tag: "kitchen"
+    
+    calibrations:
+      # This calibration will run continuously (default behavior)
+      - id: continuous_calibration
+        calibration_delay: 30s
+        calibration_behavior: calibrate_continuously  # Default value
+        exclude_from_clear:
+          - pir_sensor_1
+        on_calibrate:
+          - logger.log: "Continuous calibration triggered"
+      
+      # This calibration will only run once after initialization
+      - id: initialization_calibration
+        calibration_delay: 60s
+        calibration_behavior: calibrate_on_initialization  # New option
+        exclude_from_clear:
+          - pir_sensor_2
+        on_calibrate:
+          - logger.log: "One-time initialization calibration completed"
